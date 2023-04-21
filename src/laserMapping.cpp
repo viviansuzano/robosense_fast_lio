@@ -88,7 +88,8 @@ double res_mean_last = 0.05, total_residual = 0.0;
 double last_timestamp_lidar = 0, last_timestamp_imu = -1.0;
 double gyr_cov = 0.1, acc_cov = 0.1, b_gyr_cov = 0.0001, b_acc_cov = 0.0001;
 double filter_size_corner_min = 0, filter_size_surf_min = 0, filter_size_map_min = 0, fov_deg = 0;
-double cube_len = 0, HALF_FOV_COS = 0, FOV_DEG = 0, total_distance = 0, lidar_end_time = 0, first_lidar_time = 0.0;
+double cube_len = 0, HALF_FOV_COS = 0, FOV_DEG = 0, total_distance = 0, lidar_end_time = 0, lidar_beg_time_m1 = 0, first_lidar_time = 0.0;
+int num_sub_cloud;
 int    effct_feat_num = 0, time_log_counter = 0, scan_count = 0, publish_count = 0;
 int    iterCount = 0, feats_down_size = 0, NUM_MAX_ITERATIONS = 0, laserCloudValidNum = 0, pcd_save_interval = -1, pcd_index = 0;
 bool   point_selected_surf[100000] = {0};
@@ -286,14 +287,29 @@ void standard_pcl_cbk(const sensor_msgs::PointCloud2::ConstPtr &msg)
         lidar_buffer.clear();
     }
 
-    PointCloudXYZI::Ptr  ptr(new PointCloudXYZI());
-    p_pre->process(msg, ptr);
-    lidar_buffer.push_back(ptr);
-    time_buffer.push_back(msg->header.stamp.toSec());
-    last_timestamp_lidar = msg->header.stamp.toSec();
+    if(p_pre->lidar_type == RSM1_BREAK){
+        for(int i_sub_cloud = 0; i_sub_cloud < num_sub_cloud; i_sub_cloud ++){
+            PointCloudXYZI::Ptr  ptr(new PointCloudXYZI());
+            double start_time, end_time;
+            p_pre->process(msg, ptr, i_sub_cloud, num_sub_cloud, start_time, end_time);
+            lidar_buffer.push_back(ptr);
+            time_buffer.push_back(start_time);
+            last_timestamp_lidar = start_time;
+            sig_buffer.notify_all();
+        }
+    }
+    else{
+        PointCloudXYZI::Ptr  ptr(new PointCloudXYZI());
+        double start_time, end_time;
+        p_pre->process(msg, ptr, 0, 1, start_time, end_time);
+        lidar_buffer.push_back(ptr);
+        time_buffer.push_back(msg->header.stamp.toSec());
+        last_timestamp_lidar = msg->header.stamp.toSec();
+        sig_buffer.notify_all();
+    }
     s_plot11[scan_count] = omp_get_wtime() - preprocess_start_time;
     mtx_buffer.unlock();
-    sig_buffer.notify_all();
+    //sig_buffer.notify_all();
 }
 
 double timediff_lidar_wrt_imu = 0.0;
@@ -374,7 +390,11 @@ bool sync_packages(MeasureGroup &meas)
     if(!lidar_pushed)
     {
         meas.lidar = lidar_buffer.front();
-        meas.lidar_beg_time = time_buffer.front();
+        if(p_pre->lidar_type == RSM1){
+            meas.lidar_beg_time = time_buffer.front() - meas.lidar->points.back().curvature / double(1000);
+        }else{
+            meas.lidar_beg_time = time_buffer.front();
+        }
         if (meas.lidar->points.size() <= 1) // time too little
         {
             lidar_end_time = meas.lidar_beg_time + lidar_mean_scantime;
@@ -392,9 +412,37 @@ bool sync_packages(MeasureGroup &meas)
         }
 
         meas.lidar_end_time = lidar_end_time;
-
+/*        std::cout<< "lidar_mean_scantime: " << lidar_mean_scantime
+                 << "beg_time: " << meas.lidar_beg_time
+                 << " end time: "<< meas.lidar_end_time <<std::endl;*/
         lidar_pushed = true;
     }
+/*    if(!lidar_pushed)
+    {
+        meas.lidar = lidar_buffer.front();
+        meas.lidar_end_time = time_buffer.front();
+        //std::cout << "lidar_beg_time " << meas.lidar_beg_time <<std::endl;
+        if (meas.lidar->points.size() <= 1) // time too little
+        {
+            lidar_beg_time_m1 = meas.lidar_end_time - lidar_mean_scantime;
+            ROS_WARN("Too few input point cloud!\n");
+        }
+        else if (meas.lidar->points.back().curvature / double(1000) < 0.5 * lidar_mean_scantime)
+        {
+            lidar_beg_time_m1 = meas.lidar_end_time - lidar_mean_scantime;
+        }
+        else
+        {
+            scan_num ++;
+            lidar_beg_time_m1 = meas.lidar_end_time - meas.lidar->points.back().curvature / double(1000);
+            lidar_mean_scantime += (meas.lidar->points.back().curvature / double(1000) - lidar_mean_scantime) / scan_num;
+            //std::cout<< "lidar_mean_scantime " << lidar_mean_scantime << " end time: "<< lidar_end_time <<std::endl;
+        }
+
+        meas.lidar_beg_time = lidar_beg_time_m1;
+
+        lidar_pushed = true;
+    }*/
 
     if (last_timestamp_imu < lidar_end_time)
     {
@@ -404,7 +452,7 @@ bool sync_packages(MeasureGroup &meas)
     /*** push imu data, and pop from imu buffer ***/
     double imu_time = imu_buffer.front()->header.stamp.toSec();
     meas.imu.clear();
-    while ((!imu_buffer.empty()) && (imu_time < lidar_end_time))
+    while ((!imu_buffer.empty()) && (imu_time < meas.lidar_end_time))
     {
         imu_time = imu_buffer.front()->header.stamp.toSec();
         if(imu_time > lidar_end_time) break;
@@ -773,6 +821,7 @@ int main(int argc, char** argv)
     nh.param<double>("mapping/acc_cov",acc_cov,0.1);
     nh.param<double>("mapping/b_gyr_cov",b_gyr_cov,0.0001);
     nh.param<double>("mapping/b_acc_cov",b_acc_cov,0.0001);
+    nh.param<int>("mapping/num_sub_cloud", num_sub_cloud, 1);
     nh.param<double>("preprocess/blind", p_pre->blind, 0.01);
     nh.param<int>("preprocess/lidar_type", p_pre->lidar_type, AVIA);
     nh.param<int>("preprocess/scan_line", p_pre->N_SCANS, 16);
@@ -824,6 +873,7 @@ int main(int argc, char** argv)
     FILE *fp;
     string pos_log_dir = root_dir + "/Log/pos_log.txt";
     fp = fopen(pos_log_dir.c_str(),"w");
+    ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);//Debug Info
 
     ofstream fout_pre, fout_out, fout_dbg;
     fout_pre.open(DEBUG_FILE_DIR("mat_pre.txt"),ios::out);
@@ -884,6 +934,7 @@ int main(int argc, char** argv)
 
             if (feats_undistort->empty() || (feats_undistort == NULL))
             {
+                std::cout<< "feats_undistort->empty() " << feats_undistort->empty() << std::endl;
                 ROS_WARN("No point, skip this scan!\n");
                 continue;
             }
@@ -921,6 +972,7 @@ int main(int argc, char** argv)
             /*** ICP and iterated Kalman filter update ***/
             if (feats_down_size < 5)
             {
+                std::cout<< "feats_down_size " << feats_down_size << std::endl;
                 ROS_WARN("No point, skip this scan!\n");
                 continue;
             }
@@ -932,7 +984,7 @@ int main(int argc, char** argv)
             fout_pre<<setw(20)<<Measures.lidar_beg_time - first_lidar_time<<" "<<euler_cur.transpose()<<" "<< state_point.pos.transpose()<<" "<<ext_euler.transpose() << " "<<state_point.offset_T_L_I.transpose()<< " " << state_point.vel.transpose() \
             <<" "<<state_point.bg.transpose()<<" "<<state_point.ba.transpose()<<" "<<state_point.grav<< endl;
 
-            if(0) // If you need to see map point, change to "if(1)"
+            if(1) // If you need to see map point, change to "if(1)"
             {
                 PointVector ().swap(ikdtree.PCL_Storage);
                 ikdtree.flatten(ikdtree.Root_Node, ikdtree.PCL_Storage, NOT_RECORD);
@@ -999,7 +1051,9 @@ int main(int argc, char** argv)
                 s_plot9[time_log_counter] = aver_time_consu;
                 s_plot10[time_log_counter] = add_point_size;
                 time_log_counter ++;
-                printf("[ mapping ]: time: IMU + Map + Input Downsample: %0.6f ave match: %0.6f ave solve: %0.6f  ave ICP: %0.6f  map incre: %0.6f ave total: %0.6f icp: %0.6f construct H: %0.6f \n",t1-t0,aver_time_match,aver_time_solve,t3-t1,t5-t3,aver_time_consu,aver_time_icp, aver_time_const_H_time);
+                std::cout << "frame_num: " << frame_num << " " << std::endl;
+                //printf("[ mapping ]: time: ave total: %0.6f IMU + Map + Input Downsample: %0.6f ave match: %0.6f ave solve: %0.6f  ave ICP: %0.6f  map incre: %0.6f  icp: %0.6f construct H: %0.6f ms\n",
+                //       1000*aver_time_consu,1000*(t1-t0), 1000*aver_time_match,1000*aver_time_solve,1000*(t3-t1),1000*(t5-t3),1000*aver_time_icp, 1000*aver_time_const_H_time);
                 ext_euler = SO3ToEuler(state_point.offset_R_L_I);
                 fout_out << setw(20) << Measures.lidar_beg_time - first_lidar_time << " " << euler_cur.transpose() << " " << state_point.pos.transpose()<< " " << ext_euler.transpose() << " "<<state_point.offset_T_L_I.transpose()<<" "<< state_point.vel.transpose() \
                 <<" "<<state_point.bg.transpose()<<" "<<state_point.ba.transpose()<<" "<<state_point.grav<<" "<<feats_undistort->points.size()<<endl;

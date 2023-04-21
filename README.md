@@ -1,3 +1,20 @@
+## Adaption by ruanjy
+Adopted for robosense M1
+
+give the timestamp of M1 points and ros message correctly. (fastlio use the start time of a scan).
+
+changes:
+```
+IMU_Processing.hpp: some scout
+
+laserMapping.cpp: standard_pcl_cbk  add new callback to break down a scan into several subscan if(p_pre->lidar_type == RSM1_BREAK){
+bool sync_packages(MeasureGroup &meas) M1 timestamp
+
+preprocess.cpp: M1 handler: void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &msg,
+int i_sub_cloud, int num_sub_cloud, double & strat_time, double & end_time)
+
+preprocess.h: M1 point type
+```
 ## Related Works and Extended Application
 
 **SLAM:**

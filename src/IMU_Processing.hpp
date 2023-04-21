@@ -156,6 +156,7 @@ void ImuProcess::set_acc_bias_cov(const V3D &b_a)
 
 void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state, int &N)
 {
+    ROS_DEBUG("ImuProcess::IMU_init");
   /** 1. initializing the gravity, gyro bias, acc and gyro covariance
    ** 2. normalize the acceleration measurenments to unit gravity **/
   
@@ -213,6 +214,7 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 
 
 void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state, PointCloudXYZI &pcl_out)
 {
+  ROS_DEBUG("ImuProcess::UndistortPcl");
   /*** add the imu of the last frame-tail to the of current frame-head ***/
   auto v_imu = meas.imu;
   v_imu.push_front(last_imu_);
@@ -224,8 +226,8 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
   /*** sort point clouds by offset time ***/
   pcl_out = *(meas.lidar);
   sort(pcl_out.points.begin(), pcl_out.points.end(), time_list);
-  // cout<<"[ IMU Process ]: Process lidar from "<<pcl_beg_time<<" to "<<pcl_end_time<<", " \
-  //          <<meas.imu.size()<<" imu msgs from "<<imu_beg_time<<" to "<<imu_end_time<<endl;
+/*    cout<<setprecision(18)<<"[ IMU Process ]: Process "<<meas.lidar->points.size()<<" lidar from "<<pcl_beg_time<<" to "<<pcl_end_time<<", " \
+            <<meas.imu.size()<<" imu msgs from "<<imu_beg_time<<" to "<<imu_end_time<<endl;*/
 
   /*** Initialize IMU pose ***/
   state_ikfom imu_state = kf_state.get_x();
@@ -332,10 +334,12 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
       if (it_pcl == pcl_out.points.begin()) break;
     }
   }
+   //std::cout<< "pcl_out size in UndistortPcl " << pcl_out.size() << " "<< pcl_out.empty() << std::endl;
 }
 
 void ImuProcess::Process(const MeasureGroup &meas,  esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state, PointCloudXYZI::Ptr cur_pcl_un_)
 {
+    ROS_DEBUG("ImuProcess::Process");
   double t1,t2,t3;
   t1 = omp_get_wtime();
 
