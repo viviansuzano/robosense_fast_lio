@@ -336,20 +336,11 @@ void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &m
                     added_pt.normal_x = 0;
                     added_pt.normal_y = 0;
                     added_pt.normal_z = 0;
-                    //(ori_point.timestamp-int(ori_point.timestamp)/10*10)
-                    //if(last_time_stamp < 0){
-                        added_pt.curvature = (ori_point.timestamp-strat_time) * time_unit_scale; // curvature unit: ms  time_unit_scale
-                    //}else{
-                        //added_pt.curvature = (ori_point.timestamp-last_time_stamp) * time_unit_scale; // curvature unit: ms  time_unit_scale
-                    //}
-                    //time_stamp_of_points.push_back(added_pt.curvature);
-                    //pl_surf.points.push_back(added_pt);
+                    added_pt.curvature = (ori_point.timestamp-strat_time) * time_unit_scale; // curvature unit: ms  time_unit_scale
                     if(i_ori_width < N_SCANS){
                         pl_buff[i_ori_width].push_back(added_pt);
                     }
-
                 }
-
             }
         }
         for (int j = 0; j < N_SCANS; j++)
@@ -407,12 +398,7 @@ void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &m
                     added_pt.normal_x = 0;
                     added_pt.normal_y = 0;
                     added_pt.normal_z = 0;
-                    //(ori_point.timestamp-int(ori_point.timestamp)/10*10)
-                    //if(last_time_stamp < 0){
-                        added_pt.curvature = (ori_point.timestamp-strat_time) * time_unit_scale; // curvature unit: ms  time_unit_scale
-                    //}else{
-                        //added_pt.curvature = (ori_point.timestamp-last_time_stamp) * time_unit_scale; // curvature unit: ms  time_unit_scale
-                    //}
+                    added_pt.curvature = (ori_point.timestamp-strat_time) * time_unit_scale; // curvature unit: ms  time_unit_scale
                     time_stamp_of_points.push_back(added_pt.curvature);
                     pl_surf.points.push_back(added_pt);
                 }
@@ -423,10 +409,10 @@ void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &m
         std::sort(time_stamp_of_points.begin(), time_stamp_of_points.end());
 /*        std::cout<<setprecision(18)<< "pl surf timestamp:\n" << "min "<< time_stamp_of_points.front()  <<
                  " max " << time_stamp_of_points.back()<<std::endl;*/
-        //std::cout        << " point_size_downsample: "<< pl_surf.size()<<std::endl;
+        std::cout        << " point_size_downsample: "<< pl_surf.size()<<std::endl;
     }
-    // pub_func(pl_surf, pub_full, msg->header.stamp);
-    // pub_func(pl_surf, pub_corn, msg->header.stamp);
+     //pub_func(pl_surf, pub_full, msg->header.stamp);
+     pub_func(pl_surf, pub_corn, msg->header.stamp);
 }
 
 void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
@@ -917,13 +903,14 @@ void Preprocess::give_feature(pcl::PointCloud<PointType> &pl, vector<orgtype> &t
   }
 }
 
-void Preprocess::pub_func(PointCloudXYZI &pl, const ros::Time &ct)
+void Preprocess::pub_func(PointCloudXYZI &pl, const ros::Publisher publisher, const ros::Time &ct)
 {
   pl.height = 1; pl.width = pl.size();
   sensor_msgs::PointCloud2 output;
   pcl::toROSMsg(pl, output);
-  output.header.frame_id = "livox";
+  output.header.frame_id = "camera_init";
   output.header.stamp = ct;
+  publisher.publish(output);
 }
 
 int Preprocess::plane_judge(const PointCloudXYZI &pl, vector<orgtype> &types, uint i_cur, uint &i_nex, Eigen::Vector3d &curr_direct)

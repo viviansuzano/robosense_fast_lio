@@ -89,6 +89,7 @@ double last_timestamp_lidar = 0, last_timestamp_imu = -1.0;
 double gyr_cov = 0.1, acc_cov = 0.1, b_gyr_cov = 0.0001, b_acc_cov = 0.0001;
 double filter_size_corner_min = 0, filter_size_surf_min = 0, filter_size_map_min = 0, fov_deg = 0;
 double cube_len = 0, HALF_FOV_COS = 0, FOV_DEG = 0, total_distance = 0, lidar_end_time = 0, lidar_beg_time_m1 = 0, first_lidar_time = 0.0;
+double max_search_dist_surf;
 int num_sub_cloud;
 int    effct_feat_num = 0, time_log_counter = 0, scan_count = 0, publish_count = 0;
 int    iterCount = 0, feats_down_size = 0, NUM_MAX_ITERATIONS = 0, laserCloudValidNum = 0, pcd_save_interval = -1, pcd_index = 0;
@@ -711,7 +712,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         {
             /** Find the closest surfaces in the map **/
             ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
-            point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
+            point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > max_search_dist_surf ? false : true;
         }
 
         if (!point_selected_surf[i]) continue;
@@ -822,6 +823,7 @@ int main(int argc, char** argv)
     nh.param<double>("mapping/b_gyr_cov",b_gyr_cov,0.0001);
     nh.param<double>("mapping/b_acc_cov",b_acc_cov,0.0001);
     nh.param<int>("mapping/num_sub_cloud", num_sub_cloud, 1);
+    nh.param<double>("mapping/max_search_dist_surf", max_search_dist_surf, 5);
     nh.param<double>("preprocess/blind", p_pre->blind, 0.01);
     nh.param<int>("preprocess/lidar_type", p_pre->lidar_type, AVIA);
     nh.param<int>("preprocess/scan_line", p_pre->N_SCANS, 16);
@@ -901,6 +903,10 @@ int main(int argc, char** argv)
             ("/Odometry", 100000);
     ros::Publisher pubPath          = nh.advertise<nav_msgs::Path> 
             ("/path", 100000);
+    p_pre->pub_corn = nh.advertise<sensor_msgs::PointCloud2>
+            ("/corn_feature", 100000);
+    p_pre->pub_surf = nh.advertise<sensor_msgs::PointCloud2>
+            ("/surf_feature", 100000);
 //------------------------------------------------------------------------------------------------------
     signal(SIGINT, SigHandle);
     ros::Rate rate(5000);
@@ -947,6 +953,7 @@ int main(int argc, char** argv)
             /*** downsample the feature points in a scan ***/
             downSizeFilterSurf.setInputCloud(feats_undistort);
             downSizeFilterSurf.filter(*feats_down_body);
+            //feats_down_body = feats_undistort->makeShared();
             t1 = omp_get_wtime();
             feats_down_size = feats_down_body->points.size();
             /*** initialize the map kdtree ***/
@@ -1052,8 +1059,10 @@ int main(int argc, char** argv)
                 s_plot10[time_log_counter] = add_point_size;
                 time_log_counter ++;
                 std::cout << "frame_num: " << frame_num << " " << std::endl;
-                //printf("[ mapping ]: time: ave total: %0.6f IMU + Map + Input Downsample: %0.6f ave match: %0.6f ave solve: %0.6f  ave ICP: %0.6f  map incre: %0.6f  icp: %0.6f construct H: %0.6f ms\n",
-                //       1000*aver_time_consu,1000*(t1-t0), 1000*aver_time_match,1000*aver_time_solve,1000*(t3-t1),1000*(t5-t3),1000*aver_time_icp, 1000*aver_time_const_H_time);
+                printf("[ mapping ]: time: this frame: %0.3f ave total: %0.3f IMU + Map + Input Downsample: %0.3f ave match: %0.3f ave solve: %0.3f  ave ICP: %0.3f  map incre: %0.3f  icp: %0.3f construct H: %0.3f ms\n",
+                       1000*(t5 - t0), 1000*aver_time_consu,1000*(t1-t0), 1000*aver_time_match,1000*aver_time_solve,1000*(t3-t1),1000*(t5-t3),1000*aver_time_icp, 1000*aver_time_const_H_time);
+/*                printf("[ mapping ]: time: ave total: %0.6f IMU + Map + Input Downsample: %0.6f ave match: %0.6f ave solve: %0.6f  ave ICP: %0.6f  map incre: %0.6f  icp: %0.6f construct H: %0.6f ms\n",
+                       1000*aver_time_consu,1000*(t1-t0), 1000*aver_time_match,1000*aver_time_solve,1000*(t3-t1),1000*(t5-t3),1000*aver_time_icp, 1000*aver_time_const_H_time);*/
                 ext_euler = SO3ToEuler(state_point.offset_R_L_I);
                 fout_out << setw(20) << Measures.lidar_beg_time - first_lidar_time << " " << euler_cur.transpose() << " " << state_point.pos.transpose()<< " " << ext_euler.transpose() << " "<<state_point.offset_T_L_I.transpose()<<" "<< state_point.vel.transpose() \
                 <<" "<<state_point.bg.transpose()<<" "<<state_point.ba.transpose()<<" "<<state_point.grav<<" "<<feats_undistort->points.size()<<endl;
