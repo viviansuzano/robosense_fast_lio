@@ -289,15 +289,16 @@ void standard_pcl_cbk(const sensor_msgs::PointCloud2::ConstPtr &msg)
     }
 
     if(p_pre->lidar_type == RSM1_BREAK){
+        double start_time, end_time;
         for(int i_sub_cloud = 0; i_sub_cloud < num_sub_cloud; i_sub_cloud ++){
             PointCloudXYZI::Ptr  ptr(new PointCloudXYZI());
-            double start_time, end_time;
             p_pre->process(msg, ptr, i_sub_cloud, num_sub_cloud, start_time, end_time);
             lidar_buffer.push_back(ptr);
             time_buffer.push_back(start_time);
             last_timestamp_lidar = start_time;
             sig_buffer.notify_all();
         }
+        lidar_end_time = end_time;
     }
     else{
         PointCloudXYZI::Ptr  ptr(new PointCloudXYZI());
