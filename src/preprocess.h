@@ -110,7 +110,7 @@ class Preprocess
   
   void process(const livox_ros_driver::CustomMsg::ConstPtr &msg, PointCloudXYZI::Ptr &pcl_out);
   void process(const sensor_msgs::PointCloud2::ConstPtr &msg, PointCloudXYZI::Ptr &pcl_out,
-               int i_sub_cloud, int num_sub_cloud, double & strat_time, double & end_time);
+               int i_sub_cloud, int num_sub_cloud, double & start_time, double & end_time);
   void set(bool feat_en, int lid_type, double bld, int pfilt_num);
 
   // sensor_msgs::PointCloud2::ConstPtr pointcloud;
@@ -127,7 +127,7 @@ class Preprocess
   private:
   void avia_handler(const livox_ros_driver::CustomMsg::ConstPtr &msg);
   void oust64_handler(const sensor_msgs::PointCloud2::ConstPtr &msg);
-  void robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &msg, int i_sub_cloud, int num_sub_cloud, double & strat_time, double & end_time);
+  void robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &msg, int i_sub_cloud, int num_sub_cloud, double & start_time, double & end_time);
   void velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg);
   void give_feature(PointCloudXYZI &pl, vector<orgtype> &types);
   void pub_func(PointCloudXYZI &pl, const ros::Publisher publisher, const ros::Time &ct);

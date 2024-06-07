@@ -49,7 +49,7 @@ void Preprocess::process(const livox_ros_driver::CustomMsg::ConstPtr &msg, Point
 }
 
 void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg, PointCloudXYZI::Ptr &pcl_out,
-                         int i_sub_cloud, int num_sub_cloud, double & strat_time, double & end_time)
+                         int i_sub_cloud, int num_sub_cloud, double & start_time, double & end_time)
 {
   switch (time_unit)
   {
@@ -81,11 +81,11 @@ void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg, PointClo
     break;
 
   case RSM1:
-    robosenseM1_handler(msg, i_sub_cloud, num_sub_cloud, strat_time, end_time);
+    robosenseM1_handler(msg, i_sub_cloud, num_sub_cloud, start_time, end_time);
     break;
 
   case RSM1_BREAK:
-    robosenseM1_handler(msg, i_sub_cloud, num_sub_cloud, strat_time, end_time);
+    robosenseM1_handler(msg, i_sub_cloud, num_sub_cloud, start_time, end_time);
     break;
 
   default:
@@ -293,7 +293,7 @@ void Preprocess::oust64_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
   // pub_func(pl_surf, pub_corn, msg->header.stamp);
 }
 void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &msg,
-                                     int i_sub_cloud, int num_sub_cloud, double & strat_time, double & end_time)
+                                     int i_sub_cloud, int num_sub_cloud, double & start_time, double & end_time)
 {
     pl_surf.clear();
     pl_corn.clear();
@@ -318,7 +318,7 @@ void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &m
 
                 robosenseM1_ros::Point & ori_point = pl_orig.at(i_ori_width, i_ori_height);
                 if(i_ori_height == num_point_each_sub_cloud * i_sub_cloud){//record time of the first point
-                    strat_time = ori_point.timestamp;
+                    start_time = ori_point.timestamp;
                 }else if(i_ori_height == num_point_each_sub_cloud * (i_sub_cloud+1) - 1){//record time of the last point
                     end_time = ori_point.timestamp;
                 }
@@ -336,7 +336,7 @@ void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &m
                     added_pt.normal_x = 0;
                     added_pt.normal_y = 0;
                     added_pt.normal_z = 0;
-                    added_pt.curvature = (ori_point.timestamp-strat_time) * time_unit_scale; // curvature unit: ms  time_unit_scale
+                    added_pt.curvature = (ori_point.timestamp-start_time) * time_unit_scale; // curvature unit: ms  time_unit_scale
                     if(i_ori_width < N_SCANS){
                         pl_buff[i_ori_width].push_back(added_pt);
                     }
@@ -380,7 +380,7 @@ void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &m
 
                 robosenseM1_ros::Point & ori_point = pl_orig.at(i_ori_width, i_ori_height);
                 if(i_ori_height == num_point_each_sub_cloud * i_sub_cloud){//record time of the first point
-                    strat_time = ori_point.timestamp;
+                    start_time = ori_point.timestamp;
                 }else if(i_ori_height == num_point_each_sub_cloud * (i_sub_cloud+1) - 1){//record time of the last point
                     end_time = ori_point.timestamp;
                 }
@@ -398,7 +398,7 @@ void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &m
                     added_pt.normal_x = 0;
                     added_pt.normal_y = 0;
                     added_pt.normal_z = 0;
-                    added_pt.curvature = (ori_point.timestamp-strat_time) * time_unit_scale; // curvature unit: ms  time_unit_scale
+                    added_pt.curvature = (ori_point.timestamp-start_time) * time_unit_scale; // curvature unit: ms  time_unit_scale
                     time_stamp_of_points.push_back(added_pt.curvature);
                     pl_surf.points.push_back(added_pt);
                 }
