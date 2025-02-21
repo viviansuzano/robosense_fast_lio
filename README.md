@@ -24,6 +24,19 @@ int i_sub_cloud, int num_sub_cloud, double & strat_time, double & end_time)`
 #### `preprocess.h`: 
 
 - add M1 point type
+  
+## Usage
+
+```
+roslaunch fast_lio mapping_robosenseM1.launch
+```
+
+or
+
+```
+roslaunch fast_lio mapping_robosenseE1R.launch
+```
+
 
 ## Related Works and Extended Application
 
