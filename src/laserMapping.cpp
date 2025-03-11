@@ -356,8 +356,15 @@ void imu_cbk(const sensor_msgs::Imu::ConstPtr &msg_in)
     publish_count ++;
      //cout<<"IMU got at: "<<msg_in->header.stamp.toSec()<<endl;
     sensor_msgs::Imu::Ptr msg(new sensor_msgs::Imu(*msg_in));
+    // adjust timestamp manually, only used when the lidar and imu use different time source
+    //time_diff_lidar_to_imu = -1740105883.56 + 2676.403183080;
+    // time_diff_lidar_to_imu =  -1740106128.69180 + 2919.403164000;// - 0.077;
+//    time_diff_lidar_to_imu =  -1740106128.7678;
 
-    msg->header.stamp = ros::Time().fromSec(msg_in->header.stamp.toSec() - time_diff_lidar_to_imu);
+    msg->header.stamp = ros::Time().fromSec(msg_in->header.stamp.toSec() + time_diff_lidar_to_imu);
+
+//    std::cout << "IMU got at: " << msg->header.stamp.toSec() << std::endl;
+
     if (abs(timediff_lidar_wrt_imu) > 0.1 && time_sync_en)
     {
         msg->header.stamp = \
@@ -674,7 +681,7 @@ void publish_path(const ros::Publisher pubPath)
     /*** if path is too large, the rvis will crash ***/
     static int jjj = 0;
     jjj++;
-    if (jjj % 10 == 0) 
+    if (jjj % 1 == 0)
     {
         path.poses.push_back(msg_body_pose);
         pubPath.publish(path);
@@ -903,6 +910,10 @@ int main(int argc, char** argv)
             ("/Laser_map", 100000);
     ros::Publisher pubOdomAftMapped = nh.advertise<nav_msgs::Odometry> 
             ("/Odometry", 100000);
+    ros::Publisher pubImuOdom          = nh.advertise<nav_msgs::Odometry>
+            ("/high_frequency_odometry", 100000);
+    p_imu->set_node_handler(pubImuOdom);
+
     ros::Publisher pubPath          = nh.advertise<nav_msgs::Path> 
             ("/path", 100000);
     p_pre->pub_corn = nh.advertise<sensor_msgs::PointCloud2>

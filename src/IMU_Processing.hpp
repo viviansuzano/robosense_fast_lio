@@ -50,7 +50,10 @@ class ImuProcess
   void set_acc_bias_cov(const V3D &b_a);
   Eigen::Matrix<double, 12, 12> Q;
   void Process(const MeasureGroup &meas,  esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state, PointCloudXYZI::Ptr pcl_un_);
-
+  void set_node_handler(const ros::Publisher pub)
+    {
+        odom_pub_ = pub;
+    }
   ofstream fout_imu;
   V3D cov_acc;
   V3D cov_gyr;
@@ -80,6 +83,8 @@ class ImuProcess
   int    init_iter_num = 1;
   bool   b_first_frame_ = true;
   bool   imu_need_init_ = true;
+    ros::Publisher odom_pub_;
+    void PublishOdometry(const state_ikfom &imu_state, double timestamp);
 };
 
 ImuProcess::ImuProcess()
@@ -211,7 +216,31 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 
   last_imu_ = meas.imu.back();
 
 }
+void ImuProcess::PublishOdometry(const state_ikfom &imu_state, double timestamp)
+{
+    nav_msgs::Odometry odom_msg;
+    odom_msg.header.stamp = ros::Time().fromSec(timestamp);
+    odom_msg.header.frame_id = "camera_init";
+    odom_msg.child_frame_id = "body";
 
+    // 设置位置
+    geometry_msgs::Pose pose_msg;
+    pose_msg.position.x = imu_state.pos.x();
+    pose_msg.position.y = imu_state.pos.y();
+    pose_msg.position.z = imu_state.pos.z();
+
+    // 设置姿态
+    Eigen::Quaterniond q(imu_state.rot);
+    pose_msg.orientation.x = q.x();
+    pose_msg.orientation.y = q.y();
+    pose_msg.orientation.z = q.z();
+    pose_msg.orientation.w = q.w();
+
+    odom_msg.pose.pose = pose_msg;
+
+    // 发布里程计信息
+    odom_pub_.publish(odom_msg);
+}
 void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state, PointCloudXYZI &pcl_out)
 {
   ROS_DEBUG("ImuProcess::UndistortPcl");
@@ -279,6 +308,10 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
 
     /* save the poses at each IMU measurements */
     imu_state = kf_state.get_x();
+    bool pub_imu_odom = true;
+    if(pub_imu_odom){
+        PublishOdometry(imu_state, tail->header.stamp.toSec());
+    }
     angvel_last = angvel_avr - imu_state.bg;
     acc_s_last  = imu_state.rot * (acc_avr - imu_state.ba);
     for(int i=0; i<3; i++)
