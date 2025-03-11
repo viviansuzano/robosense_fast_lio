@@ -1,20 +1,23 @@
 ## Adaption by ruanjy
 
-Support robosense LiDAR including **M1, E1R, and Airy**
+Support the robosense LiDARs including **M1, E1R, and Airy**
 
-The timestamp of robosense LiDAR points and ros message is modified. (fastlio and lio-sam uses the start time of a scan).
-
-### Changes:
+- The timestamp of robosense LiDAR points and ros message is modified. (fastlio and lio-sam uses the start time of a scan).
+- Publish **high frequency odometry in IMU rate** (like 100-400hz), topic name: `high_frequency_odometry`
+- Corresponding yaml and launch files
+### Code changes:
 
 #### `IMU_Processing.hpp`: 
 
-- add some cout
+- add some cout.
+- publish high frequency odometry in IMU rate.
 
 #### `laserMapping.cpp`:
 
--  add a new callback, it can break down a scan into several sub-scana. `if(p_pre->lidar_type == RSM1_BREAK){
-bool sync_packages(MeasureGroup &meas)`
-- change M1 timestamp
+-  add a new callback to process robosense message.
+- the new callback can also break down a scan into several sub-scana by setting  `if(p_pre->lidar_type == RSM1_BREAK){
+bool sync_packages(MeasureGroup &meas)`.
+- change timestamp of each point and the message.
 
 #### `preprocess.cpp`:
 
@@ -37,6 +40,7 @@ or
 roslaunch fast_lio mapping_robosenseE1R.launch
 ```
 
+## Original readme:
 
 ## Related Works and Extended Application
 
