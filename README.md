@@ -1,20 +1,43 @@
 ## Adaption by ruanjy
-Adopted for robosense M1
 
-give the timestamp of M1 points and ros message correctly. (fastlio use the start time of a scan).
+Support robosense LiDAR including **M1, E1R, and Airy**
 
-changes:
+The timestamp of robosense LiDAR points and ros message is modified. (fastlio and lio-sam uses the start time of a scan).
+
+### Changes:
+
+#### `IMU_Processing.hpp`: 
+
+- add some cout
+
+#### `laserMapping.cpp`:
+
+-  add a new callback, it can break down a scan into several sub-scana. `if(p_pre->lidar_type == RSM1_BREAK){
+bool sync_packages(MeasureGroup &meas)`
+- change M1 timestamp
+
+#### `preprocess.cpp`:
+
+- add M1 handler: `void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &msg,
+int i_sub_cloud, int num_sub_cloud, double & strat_time, double & end_time)`
+
+#### `preprocess.h`: 
+
+- add M1 point type
+  
+## Usage
+
 ```
-IMU_Processing.hpp: some scout
-
-laserMapping.cpp: standard_pcl_cbk  add new callback to break down a scan into several subscan if(p_pre->lidar_type == RSM1_BREAK){
-bool sync_packages(MeasureGroup &meas) M1 timestamp
-
-preprocess.cpp: M1 handler: void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &msg,
-int i_sub_cloud, int num_sub_cloud, double & strat_time, double & end_time)
-
-preprocess.h: M1 point type
+roslaunch fast_lio mapping_robosenseM1.launch
 ```
+
+or
+
+```
+roslaunch fast_lio mapping_robosenseE1R.launch
+```
+
+
 ## Related Works and Extended Application
 
 **SLAM:**
