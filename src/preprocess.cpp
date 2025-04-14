@@ -385,9 +385,22 @@ void Preprocess::robosenseM1_handler(const sensor_msgs::PointCloud2::ConstPtr &m
                     end_time = ori_point.timestamp;
                 }
                 if (i_ori_height % point_filter_num != 0) {continue;}
+                //downsample airy lidar points
+//                if (i_ori_height % int(ori_point.ring /3.0 +1) != 0) {continue;}
 
-                double range = ori_point.x * ori_point.x + ori_point.y * ori_point.y + ori_point.z * ori_point.z;
-                if(sqrt(range) < 150 && sqrt(range) > blind){
+                double range = sqrt(ori_point.x * ori_point.x + ori_point.y * ori_point.y + ori_point.z * ori_point.z);
+//                if(range> 30){
+//                    if (i_ori_height % 1 != 0) {continue;}
+//                } else if(range> 20){
+//                    if (i_ori_height % 2 != 0) {continue;}
+//                } else if(range> 10) {
+//                    if (i_ori_height % 5 != 0) { continue; }
+//                } else if(range> 5) {
+//                    if (i_ori_height % 8 != 0) { continue; }
+//                } else if(range> 0) {
+//                    if (i_ori_height % 10 != 0) { continue; }
+//                }
+                if(range < 150 && range > blind){
 
                     Eigen::Vector3d pt_vec;
                     PointType added_pt;

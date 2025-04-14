@@ -357,8 +357,8 @@ void imu_cbk(const sensor_msgs::Imu::ConstPtr &msg_in)
      //cout<<"IMU got at: "<<msg_in->header.stamp.toSec()<<endl;
     sensor_msgs::Imu::Ptr msg(new sensor_msgs::Imu(*msg_in));
     // adjust timestamp manually, only used when the lidar and imu use different time source
-    //time_diff_lidar_to_imu = -1740105883.56 + 2676.403183080;
-    // time_diff_lidar_to_imu =  -1740106128.69180 + 2919.403164000;// - 0.077;
+//    time_diff_lidar_to_imu = -1740105883.56 + 2676.403183080;
+//     time_diff_lidar_to_imu =  -1740106128.69180 + 2919.403164000;// - 0.077;
 //    time_diff_lidar_to_imu =  -1740106128.7678;
 
     msg->header.stamp = ros::Time().fromSec(msg_in->header.stamp.toSec() + time_diff_lidar_to_imu);
@@ -658,18 +658,18 @@ void publish_odometry(const ros::Publisher & pubOdomAftMapped)
         odomAftMapped.pose.covariance[i*6 + 5] = P(k, 2);
     }
 
-    static tf::TransformBroadcaster br;
-    tf::Transform                   transform;
-    tf::Quaternion                  q;
-    transform.setOrigin(tf::Vector3(odomAftMapped.pose.pose.position.x, \
-                                    odomAftMapped.pose.pose.position.y, \
-                                    odomAftMapped.pose.pose.position.z));
-    q.setW(odomAftMapped.pose.pose.orientation.w);
-    q.setX(odomAftMapped.pose.pose.orientation.x);
-    q.setY(odomAftMapped.pose.pose.orientation.y);
-    q.setZ(odomAftMapped.pose.pose.orientation.z);
-    transform.setRotation( q );
-    br.sendTransform( tf::StampedTransform( transform, odomAftMapped.header.stamp, "camera_init", "body" ) );
+//    static tf::TransformBroadcaster br;
+//    tf::Transform                   transform;
+//    tf::Quaternion                  q;
+//    transform.setOrigin(tf::Vector3(odomAftMapped.pose.pose.position.x, \
+//                                    odomAftMapped.pose.pose.position.y, \
+//                                    odomAftMapped.pose.pose.position.z));
+//    q.setW(odomAftMapped.pose.pose.orientation.w);
+//    q.setX(odomAftMapped.pose.pose.orientation.x);
+//    q.setY(odomAftMapped.pose.pose.orientation.y);
+//    q.setZ(odomAftMapped.pose.pose.orientation.z);
+//    transform.setRotation( q );
+//    br.sendTransform( tf::StampedTransform( transform, odomAftMapped.header.stamp, "camera_init", "body" ) );
 }
 
 void publish_path(const ros::Publisher pubPath)

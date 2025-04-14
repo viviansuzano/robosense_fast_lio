@@ -240,6 +240,19 @@ void ImuProcess::PublishOdometry(const state_ikfom &imu_state, double timestamp)
 
     // 发布里程计信息
     odom_pub_.publish(odom_msg);
+
+    static tf::TransformBroadcaster br;
+    tf::Transform                   transform;
+    tf::Quaternion                  q_tf;
+    transform.setOrigin(tf::Vector3(imu_state.pos.x(), \
+                                    imu_state.pos.y(), \
+                                    imu_state.pos.z()));
+    q_tf.setW(q.w());
+    q_tf.setX(q.x());
+    q_tf.setY(q.y());
+    q_tf.setZ(q.z());
+    transform.setRotation( q_tf );
+    br.sendTransform( tf::StampedTransform( transform, odom_msg.header.stamp, "camera_init", "body" ) );
 }
 void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state, PointCloudXYZI &pcl_out)
 {
