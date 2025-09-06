@@ -72,7 +72,10 @@ add_message_files(
   FILES
   Pose6D.msg
 )
-
+add_service_files(
+  FILES
+  save_map.srv
+)
 generate_messages(
  DEPENDENCIES
  geometry_msgs

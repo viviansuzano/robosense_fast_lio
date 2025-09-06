@@ -59,7 +59,7 @@
 #include <livox_ros_driver/CustomMsg.h>
 #include "preprocess.h"
 #include <ikd-Tree/ikd_Tree.h>
-
+#include "fast_lio/save_map.h"
 #define INIT_TIME           (0.1)
 #define LASER_POINT_COV     (0.001)
 #define MAXN                (720000)
@@ -582,6 +582,31 @@ void publish_frame_world(const ros::Publisher & pubLaserCloudFull)
     }
 }
 
+bool save_pcd_map(fast_lio::save_map::Request &req, fast_lio::save_map::Response &res)
+{
+    std::cout << "save_pcd_map service start." <<std::endl;
+
+    if (pcl_wait_save->size() == 0  ){
+        cout << "can not save pcd map: pcl_wait_save->size() == 0 " << endl;
+        return false;
+    }
+    if (!pcd_save_en){
+        cout << "can not save pcd map: pcd_save_en == false." << endl;
+        return false;
+    }
+
+    if (pcl_wait_save->size() > 0 && pcd_save_en)
+    {
+        string file_name = string("scans.pcd");
+//        string all_points_dir(string(string(ROOT_DIR) + "PCD/") + file_name);
+        string all_points_dir("/home/ruanjy/PCD/" + file_name);
+
+        pcl::PCDWriter pcd_writer;
+        cout << "current scans saved to /PCD/" << file_name << endl;
+        pcd_writer.writeBinary(all_points_dir, *pcl_wait_save);
+        return true;
+    }
+}
 void publish_frame_body(const ros::Publisher & pubLaserCloudFull_body)
 {
     int size = feats_undistort->points.size();
@@ -810,6 +835,9 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "laserMapping");
     ros::NodeHandle nh;
+
+    ros::ServiceServer service = nh.advertiseService("save_map", save_pcd_map);
+
 
     nh.param<bool>("publish/path_en",path_en, true);
     nh.param<bool>("publish/scan_publish_en",scan_pub_en, true);
@@ -1090,15 +1118,15 @@ int main(int argc, char** argv)
     /**************** save map ****************/
     /* 1. make sure you have enough memories
     /* 2. pcd save will largely influence the real-time performences **/
-    if (pcl_wait_save->size() > 0 && pcd_save_en)
-    {
-        string file_name = string("scans.pcd");
-        string all_points_dir(string(string(ROOT_DIR) + "PCD/") + file_name);
-        pcl::PCDWriter pcd_writer;
-        cout << "current scan saved to /PCD/" << file_name<<endl;
-        pcd_writer.writeBinary(all_points_dir, *pcl_wait_save);
-    }
-
+//    if (pcl_wait_save->size() > 0 && pcd_save_en)
+//    {
+//        string file_name = string("scans.pcd");
+//        string all_points_dir(string(string(ROOT_DIR) + "PCD/") + file_name);
+//        pcl::PCDWriter pcd_writer;
+//        cout << "current scan saved to /PCD/" << file_name<<endl;
+//        pcd_writer.writeBinary(all_points_dir, *pcl_wait_save);
+//    }
+    //save_pcd_map();
     fout_out.close();
     fout_pre.close();
 
