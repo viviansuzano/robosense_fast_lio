@@ -55,8 +55,12 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Vector3.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <geometry_msgs/Vector3.h>
 #include <livox_ros_driver/CustomMsg.h>
+#include "common_lib.h"
 #include "preprocess.h"
 #include <ikd-Tree/ikd_Tree.h>
 #include "fast_lio/save_map.h"
@@ -362,6 +366,50 @@ void imu_cbk(const sensor_msgs::Imu::ConstPtr &msg_in)
 //    time_diff_lidar_to_imu =  -1740106128.7678;
 
     msg->header.stamp = ros::Time().fromSec(msg_in->header.stamp.toSec() + time_diff_lidar_to_imu);
+
+    // >>>>>>>>>> This correction is meant to be used with the Robosense AIRY LiDAR only!!
+    // TODO: get the lidar type from the config file and aply the correction only when necessary.
+
+    // Convert acceleration from g's to m/s²
+    const double G_TO_M_S2 = 9.80665;
+    msg->linear_acceleration.x *= G_TO_M_S2;
+    msg->linear_acceleration.y *= G_TO_M_S2;
+    msg->linear_acceleration.z *= G_TO_M_S2;
+
+    // https://github.com/RuanJY/robosense_fast_lio/issues/4
+    // imu_calib rotation[x,y,z,w]: [-0.704304, 0.709894, 0.0013134, 0.00205433]
+    // translation[x,y,z]: [0.00425, 0.00418, -0.00446]
+
+    // Calibration transform (IMU → LiDAR or vice versa)
+    bool apply_rotation_imu = true;
+    if (apply_rotation_imu)
+    {
+        // imu_calib rotation[x,y,z,w]: [-0.704304, 0.709894, 0.0013134, 0.00205433]
+        tf2::Quaternion q_calib(-0.704304, 0.709894, 0.0013134, 0.00205433);
+        q_calib.normalize();
+
+        // Rotate IMU orientation
+        tf2::Quaternion q_in, q_out;
+        tf2::fromMsg(msg->orientation, q_in);
+        q_out = q_calib * q_in;
+        msg->orientation = tf2::toMsg(q_out);
+
+        // Rotate angular velocity
+        tf2::Vector3 w_in(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+        tf2::Vector3 w_out = tf2::quatRotate(q_calib, w_in);
+        msg->angular_velocity.x = w_out.x();
+        msg->angular_velocity.y = w_out.y();
+        msg->angular_velocity.z = w_out.z();
+
+        // Rotate linear acceleration
+        // ATTENTION! We are ignoring the translation effects because they are ~4mm (very small)
+        tf2::Vector3 a_in(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
+        tf2::Vector3 a_out = tf2::quatRotate(q_calib, a_in);
+        msg->linear_acceleration.x = a_out.x();
+        msg->linear_acceleration.y = a_out.y();
+        msg->linear_acceleration.z = a_out.z();
+    }
+    // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 //    std::cout << "IMU got at: " << msg->header.stamp.toSec() << std::endl;
 

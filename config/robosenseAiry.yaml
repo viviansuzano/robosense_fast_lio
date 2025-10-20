@@ -1,6 +1,6 @@
 common:
     lid_topic:  "/rslidar_points"
-    imu_topic:  "/imu/data" # /mavros/imu/data /ouster/imu /imu/data
+    imu_topic:  "/rslidar_imu_data" # /mavros/imu/data /ouster/imu /imu/data
     time_sync_en: false         # ONLY turn on when external time synchronization is really not possible
     time_offset_lidar_to_imu: 0.0 # Time offset between lidar and IMU calibrated by other algorithms, e.g. LI-Init (can be found in README).
                                   # This param will take effect no matter what time_sync_en is. So if the time offset is not known exactly, please set as 0.0
@@ -25,6 +25,10 @@ mapping:
     extrinsic_R: [1, 0, 0,
                   0, 1, 0,
                   0, 0, 1]
+    # extrinsic_T: [0.004250, 0.004180, -0.004460]  # https://github.com/RoboSense-LiDAR/rslidar_sdk/issues/167
+    # extrinsic_R: [0.000280, -0.999993, 0.003629,
+    #             -0.999946, -0.000242, 0.010384,
+    #             -0.010384, -0.003632, -0.999939]
 
 publish:
     path_en:  true
